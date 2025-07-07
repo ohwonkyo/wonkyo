@@ -1,6 +1,6 @@
 # Survey Web App
 
-This repository contains a simple Flask-based web application for creating and managing online surveys. Users can design surveys through a basic GUI, collect responses, view aggregated results, and export answers in JSON format for integration with external systems.
+This repository contains a Flask-based survey platform. Through a graphical web interface you can design rich surveys, collect responses, analyse results and export data for use in other systems.
 
 ## Setup
 
@@ -16,9 +16,9 @@ This repository contains a simple Flask-based web application for creating and m
 
 ## Features
 
-- Create surveys with any number of questions.
-- Respond to surveys via a web form.
-- View result summaries with counts per answer.
-- Export survey results as JSON.
+- Create surveys with many question types including multiple choice, text, scale, matrix, file upload and more.
+- Conditional branching and input validation (numeric or alphabetic only).
+- View aggregated results and individual free‑text responses.
+- Export survey results as JSON for integration with external systems.
 
 Data is stored locally in a SQLite database (`survey.db`).
