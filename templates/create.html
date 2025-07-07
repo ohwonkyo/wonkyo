@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Create Survey{% endblock %}
+{% block content %}
+<h1>Create Survey</h1>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Survey Title</label>
+    <input type="text" name="title" class="form-control" required>
+  </div>
+  <div id="questions">
+    <div class="mb-3">
+      <label class="form-label">Question 1</label>
+      <input type="text" name="questions" class="form-control" required>
+    </div>
+  </div>
+  <button type="button" class="btn btn-secondary" onclick="addQuestion()">Add Question</button>
+  <button type="submit" class="btn btn-primary">Create</button>
+</form>
+<script>
+let qCount = 1;
+function addQuestion() {
+  qCount++;
+  const div = document.createElement('div');
+  div.className = 'mb-3';
+  div.innerHTML = `<label class="form-label">Question ${qCount}</label><input type="text" name="questions" class="form-control" required>`;
+  document.getElementById('questions').appendChild(div);
+}
+</script>
+{% endblock %}
