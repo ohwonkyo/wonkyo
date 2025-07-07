@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Survey App</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* center content and provide mobile friendly widths */
+    .survey-container {
+      max-width: 600px;
+    }
+  </style>
+</head>
+<body class="p-3">
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <script type="text/babel">
+    const lang = 'ko';
+    const i18n = {
+      ko: {
+        surveys: '설문 목록',
+        surveyTitle: '설문 제목',
+        visibility: '공개 범위',
+        visPublic: '공개 설문',
+        visPrivate: '비공개 (로그인 필요)',
+        visInvite: '초대 링크 전용',
+        allowPartial: '중간 저장 허용',
+        create: '생성',
+        adminDashboard: '관리자 대시보드',
+        loading: '로딩중...',
+        invite: '초대',
+        delete: '삭제',
+        users: '사용자',
+        submit: '제출',
+        tempSave: '임시 저장',
+        saved: '저장되었습니다',
+        login: '로그인',
+        logout: '로그아웃',
+        email: '이메일',
+        password: '비밀번호',
+        thanks: '응답해 주셔서 감사합니다!',
+        inviteEmailPrompt: '초대 이메일 (선택)',
+        duplicateCheck: '중복 응답 제한',
+        dupNone: '제한 없음',
+        dupUser: '로그인 사용자 1회',
+        dupEmail: '이메일 인증',
+        dupCookie: '브라우저 1회',
+        dupIP: 'IP 기준 1회',
+        sendCode: '코드 전송',
+        code: '인증 코드',
+        completionMessage: '완료 메시지',
+        redirectUrl: '리디렉션 URL',
+        sendConfirm: '확인 메일 발송',
+        rewardPoints: '포인트 지급',
+        closeDate: '마감 일시',
+        responseLimit: '응답 수 제한',
+        closeSurvey: '마감',
+        openSurvey: '재개',
+        surveyClosed: '설문이 마감되었습니다',
+        selectTemplate: '템플릿 선택',
+        noneTemplate: '직접 작성',
+        allowCollab: '공동 편집 허용',
+        manageRespondents: '응답자 관리',
+        addCollaborator: '협업자 추가',
+        collabEmailPrompt: '협업자 이메일 또는 ID',
+        collabPermPrompt: '권한 (read/edit/results)',
+        versions: '버전 보기',
+        respondents: '응답자',
+        revertPrompt: '되돌릴 버전 번호',
+        diffPromptA: '첫 번째 버전 번호',
+        diffPromptB: '두 번째 버전 번호',
+        copySurvey: '복사',
+        saveTemplate: '템플릿으로 저장',
+        showRealtime: '실시간 현황 공개',
+        viewStats: '현황 보기',
+        issueCertificate: '증명서 발급',
+        nameField: '이름 질문 번호',
+        downloadCertificate: '증명서 다운로드',
+        addQuestion: '문항 추가',
+        questionType: '질문 유형',
+        shortAnswer: '단답형',
+        multipleChoice: '객관식',
+        addOption: '옵션 추가',
+        advancedMode: '고급 모드',
+        preview: '미리보기',
+        close: '닫기'
+      }
+    };
+    const t = key => (i18n[lang] && i18n[lang][key]) || key;
+    function Home() {
+      const [surveys, setSurveys] = React.useState([]);
+      const [templates, setTemplates] = React.useState([]);
+      const [templateId, setTemplateId] = React.useState('');
+      const [title, setTitle] = React.useState('');
+      const [visibility, setVisibility] = React.useState('public');
+      const [allowPartial, setAllowPartial] = React.useState(true);
+      const [allowCollab, setAllowCollab] = React.useState(false);
+      const [manageResp, setManageResp] = React.useState(false);
+      const [showRealtime, setShowRealtime] = React.useState(false);
+      const [issueCert, setIssueCert] = React.useState(false);
+      const [nameField, setNameField] = React.useState('');
+      const [advanced, setAdvanced] = React.useState(false);
+      const [questions, setQuestions] = React.useState([]);
+      const [dragIndex, setDragIndex] = React.useState(null);
+      const [dup, setDup] = React.useState('none');
+      const [completion, setCompletion] = React.useState('');
+      const [redirect, setRedirect] = React.useState('');
+      const [sendConfirm, setSendConfirm] = React.useState(false);
+      const [points, setPoints] = React.useState('0');
+      const [closeDate, setCloseDate] = React.useState('');
+      const [limit, setLimit] = React.useState('');
+      const [previewOpen, setPreviewOpen] = React.useState(false);
+      React.useEffect(() => {
+        fetch('/api/surveys').then(res => res.json()).then(setSurveys);
+        fetch('/api/templates').then(res => res.json()).then(setTemplates);
+      }, []);
+
+      React.useEffect(() => {
+        const tpl = templates.find(t => t.id === templateId);
+        if (tpl) {
+          setQuestions(
+            (tpl.questions || []).map(q => ({
+              text: q.text?.[lang] || '',
+              type: q.type || 'text',
+              options: (q.options || []).map(o => o.text?.[lang] || '')
+            }))
+          );
+        } else {
+          setQuestions([]);
+        }
+      }, [templateId, templates]);
+
+      function addQuestionBlock() {
+        setQuestions([...questions, { text: '', type: 'text', options: [''] }]);
+      }
+
+      function updateQuestion(idx, data) {
+        setQuestions(qs => qs.map((q, i) => (i === idx ? { ...q, ...data } : q)));
+      }
+
+      function addOption(qIdx) {
+        setQuestions(qs =>
+          qs.map((q, i) =>
+            i === qIdx ? { ...q, options: [...(q.options || []), ''] } : q
+          )
+        );
+      }
+
+      function updateOption(qIdx, oIdx, value) {
+        setQuestions(qs =>
+          qs.map((q, i) =>
+            i === qIdx
+              ? { ...q, options: q.options.map((o, j) => (j === oIdx ? value : o)) }
+              : q
+          )
+        );
+      }
+
+      function removeOption(qIdx, oIdx) {
+        setQuestions(qs =>
+          qs.map((q, i) =>
+            i === qIdx
+              ? { ...q, options: q.options.filter((_, j) => j !== oIdx) }
+              : q
+          )
+        );
+      }
+
+      function removeQuestion(idx) {
+        setQuestions(qs => qs.filter((_, i) => i !== idx));
+      }
+
+      function handleDragStart(idx) {
+        setDragIndex(idx);
+      }
+
+      function handleDrop(idx) {
+        if (dragIndex === null) return;
+        const qs = [...questions];
+        const q = qs.splice(dragIndex, 1)[0];
+        qs.splice(idx, 0, q);
+        setDragIndex(null);
+        setQuestions(qs);
+      }
+      function createSurvey(e) {
+        e.preventDefault();
+        fetch('/api/surveys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: { [lang]: title },
+            visibility,
+            allowPartial,
+            allowCollaborators: allowCollab,
+            manageRespondents: manageResp,
+            duplicateCheck: dup,
+            completionMessage: completion,
+            redirectUrl: redirect,
+            sendConfirmation: sendConfirm,
+            rewardPoints: Number(points),
+            closeDate: closeDate,
+            responseLimit: Number(limit || 0),
+            templateId: templateId,
+            questions,
+            showRealtime,
+            certificate: { enabled: issueCert, nameField: nameField }
+          })
+        }).then(res => res.json()).then(data => {
+          setSurveys([...surveys, { id: data.id, title: { [lang]: title } }]);
+          setTitle('');
+          setTemplateId('');
+          setVisibility('public');
+          setAllowPartial(true);
+          setAllowCollab(false);
+          setManageResp(false);
+          setDup('none');
+          setCompletion('');
+          setRedirect('');
+          setSendConfirm(false);
+          setPoints('0');
+          setCloseDate('');
+          setLimit('');
+          setShowRealtime(false);
+          setIssueCert(false);
+          setNameField('');
+          setQuestions([]);
+        });
+      }
+      return (
+        <div className="survey-container mx-auto">
+          <h1 className="h4 mb-3">{t('surveys')}</h1>
+          <ul className="list-group">
+            {surveys.map(s => (
+              <li key={s.id} className="list-group-item d-flex justify-content-between">
+                <a href={`?id=${s.id}`}>{s.title?.[lang] || s.title}</a>
+                {s.showRealtime && <a href={`?stats=${s.id}`} className="btn btn-sm btn-outline-secondary">{t('viewStats')}</a>}
+              </li>
+            ))}
+          </ul>
+          <form onSubmit={createSurvey} className="mt-3">
+            <input value={title} onChange={e => setTitle(e.target.value)} className="form-control" placeholder={t('surveyTitle')} />
+            <label className="form-label mt-2" htmlFor="templateSelect">{t('selectTemplate')}</label>
+            <select id="templateSelect" className="form-select" value={templateId} onChange={e => setTemplateId(e.target.value)}>
+              <option value="">{t('noneTemplate')}</option>
+              {templates.map(tpl => (
+                <option key={tpl.id} value={tpl.id}>{tpl.title?.[lang] || tpl.title}</option>
+              ))}
+            </select>
+            <div className="form-check mt-2">
+              <input className="form-check-input" type="checkbox" id="advanced" checked={advanced} onChange={e => setAdvanced(e.target.checked)} />
+              <label className="form-check-label" htmlFor="advanced">{t('advancedMode')}</label>
+            </div>
+            {questions.map((q, idx) => (
+              <div key={idx} className="border p-2 mt-2" draggable onDragStart={() => handleDragStart(idx)} onDragOver={e => e.preventDefault()} onDrop={() => handleDrop(idx)}>
+                <input className="form-control mb-1" placeholder={`Q${idx + 1}`} value={q.text} onChange={e => updateQuestion(idx, { text: e.target.value })} />
+                {advanced && (
+                  <>
+                    <label className="form-label">{t('questionType')}</label>
+                    <select className="form-select mb-1" value={q.type} onChange={e => updateQuestion(idx, { type: e.target.value })}>
+                      <option value="text">{t('shortAnswer')}</option>
+                      <option value="choice">{t('multipleChoice')}</option>
+                    </select>
+                    {q.type === 'choice' && q.options.map((o, oi) => (
+                      <div className="d-flex mb-1" key={oi}>
+                        <input className="form-control" value={o} onChange={e => updateOption(idx, oi, e.target.value)} />
+                        <button type="button" className="btn btn-sm btn-outline-danger ms-1" onClick={() => removeOption(idx, oi)}>x</button>
+                      </div>
+                    ))}
+                    {q.type === 'choice' && <button type="button" className="btn btn-sm btn-secondary mb-1" onClick={() => addOption(idx)}>{t('addOption')}</button>}
+                  </>
+                )}
+                <button type="button" className="btn btn-sm btn-danger" onClick={() => removeQuestion(idx)}>{t('delete')}</button>
+              </div>
+            ))}
+            <button type="button" className="btn btn-secondary w-100 mt-2" onClick={addQuestionBlock}>{t('addQuestion')}</button>
+            <div className="mt-2">
+              <label className="form-label" htmlFor="visibility">{t('visibility')}</label>
+              <select id="visibility" className="form-select" value={visibility} onChange={e => setVisibility(e.target.value)}>
+                <option value="public">{t('visPublic')}</option>
+                <option value="private">{t('visPrivate')}</option>
+                <option value="invite">{t('visInvite')}</option>
+              </select>
+            </div>
+            <div className="form-check mt-2">
+              <input className="form-check-input" type="checkbox" id="partial" checked={allowPartial} onChange={e => setAllowPartial(e.target.checked)} />
+              <label className="form-check-label" htmlFor="partial">{t('allowPartial')}</label>
+            </div>
+            <div className="form-check mt-2">
+              <input className="form-check-input" type="checkbox" id="collab" checked={allowCollab} onChange={e => setAllowCollab(e.target.checked)} />
+              <label className="form-check-label" htmlFor="collab">{t('allowCollab')}</label>
+            </div>
+            <div className="form-check mt-2">
+              <input className="form-check-input" type="checkbox" id="manageResp" checked={manageResp} onChange={e => setManageResp(e.target.checked)} />
+              <label className="form-check-label" htmlFor="manageResp">{t('manageRespondents')}</label>
+            </div>
+            <div className="form-check mt-2">
+              <input className="form-check-input" type="checkbox" id="realtime" checked={showRealtime} onChange={e => setShowRealtime(e.target.checked)} />
+              <label className="form-check-label" htmlFor="realtime">{t('showRealtime')}</label>
+            </div>
+            <div className="form-check mt-2">
+              <input className="form-check-input" type="checkbox" id="cert" checked={issueCert} onChange={e => setIssueCert(e.target.checked)} />
+              <label className="form-check-label" htmlFor="cert">{t('issueCertificate')}</label>
+            </div>
+            {issueCert && (
+              <input className="form-control mt-2" placeholder={t('nameField')} value={nameField} onChange={e => setNameField(e.target.value)} />
+            )}
+            <div className="mt-2">
+              <label className="form-label" htmlFor="dup">{t('duplicateCheck')}</label>
+              <select id="dup" className="form-select" value={dup} onChange={e => setDup(e.target.value)}>
+                <option value="none">{t('dupNone')}</option>
+                <option value="user">{t('dupUser')}</option>
+                <option value="email">{t('dupEmail')}</option>
+                <option value="cookie">{t('dupCookie')}</option>
+                <option value="ip">{t('dupIP')}</option>
+              </select>
+            </div>
+            <input className="form-control mt-2" placeholder={t('completionMessage')} value={completion} onChange={e => setCompletion(e.target.value)} />
+            <input className="form-control mt-2" placeholder={t('redirectUrl')} value={redirect} onChange={e => setRedirect(e.target.value)} />
+            <div className="form-check mt-2">
+              <input className="form-check-input" type="checkbox" id="sendConfirm" checked={sendConfirm} onChange={e => setSendConfirm(e.target.checked)} />
+              <label className="form-check-label" htmlFor="sendConfirm">{t('sendConfirm')}</label>
+            </div>
+            <input className="form-control mt-2" type="datetime-local" placeholder={t('closeDate')} value={closeDate} onChange={e => setCloseDate(e.target.value)} />
+            <input className="form-control mt-2" type="number" placeholder={t('responseLimit')} value={limit} onChange={e => setLimit(e.target.value)} />
+            <input className="form-control mt-2" type="number" placeholder={t('rewardPoints')} value={points} onChange={e => setPoints(e.target.value)} />
+            <button type="button" className="btn btn-outline-primary w-100 mt-2" onClick={() => setPreviewOpen(true)}>{t('preview')}</button>
+            <button className="btn btn-primary w-100 mt-2">{t('create')}</button>
+          </form>
+          {previewOpen && (
+            <SurveyPreview
+              data={{
+                title: { [lang]: title },
+                questions: questions.map(q => ({
+                  text: { [lang]: q.text },
+                  type: q.type,
+                  options: (q.options || []).map(o => ({ text: { [lang]: o } }))
+                }))
+              }}
+              onClose={() => setPreviewOpen(false)}
+            />
+          )}
+        </div>
+      );
+    }
+
+    function Admin() {
+      const [stats, setStats] = React.useState(null);
+      const [surveys, setSurveys] = React.useState([]);
+      const [users, setUsers] = React.useState([]);
+      React.useEffect(() => {
+        fetch('/api/admin/stats', { headers: { Authorization: 'Bearer secret' } }).then(r => r.json()).then(setStats);
+        fetch('/api/admin/surveys', { headers: { Authorization: 'Bearer secret' } }).then(r => r.json()).then(setSurveys);
+        fetch('/api/admin/users', { headers: { Authorization: 'Bearer secret' } }).then(r => r.json()).then(setUsers);
+      }, []);
+      if (!stats) return <p>{t('loading')}</p>;
+      return (
+        <div className="survey-container mx-auto">
+          <h1 className="h4 mb-3">{t('adminDashboard')}</h1>
+          <p>Surveys: {stats.surveys} Responses: {stats.responses} API calls: {stats.apiCalls}</p>
+          <h2 className="h5 mt-3">{t('surveys')}</h2>
+          <ul className="list-group">
+            {surveys.map(s => (
+              <li key={s.id} className="list-group-item">
+                <div className="d-flex justify-content-between align-items-center">
+                  {s.title}
+                  <div>
+                    <button className="btn btn-sm btn-secondary me-2" onClick={() => {
+                      const email = prompt(t('inviteEmailPrompt'));
+                      fetch(`/api/admin/surveys/${s.id}/invite`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer secret' },
+                        body: JSON.stringify({ email })
+                      }).then(r => r.json()).then(data => alert('Token: ' + data.token));
+                    }}>{t('invite')}</button>
+                    <button className="btn btn-sm btn-secondary me-2" onClick={() => {
+                      const email = prompt(t('collabEmailPrompt'));
+                      const permission = prompt(t('collabPermPrompt'), 'edit');
+                      fetch(`/api/admin/surveys/${s.id}/collaborators`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer secret' },
+                        body: JSON.stringify({ email, permission })
+                      });
+                    }}>{t('addCollaborator')}</button>
+                    <button className="btn btn-sm btn-secondary me-2" onClick={() => {
+                      fetch(`/api/admin/surveys/${s.id}/versions`, { headers: { Authorization: 'Bearer secret' } })
+                        .then(r => r.json())
+                        .then(list => {
+                          const info = list.map(v => `${v.version}: ${v.summary}`).join('\n');
+                          const v = prompt(info + '\n' + t('revertPrompt'));
+                          if (v) {
+                            fetch(`/api/admin/surveys/${s.id}/versions/${v}/revert`, { method: 'POST', headers: { Authorization: 'Bearer secret' } })
+                              .then(() => alert('reverted'));
+                          }
+                          const a = prompt(t('diffPromptA'));
+                          const b = prompt(t('diffPromptB'));
+                          if (a && b) {
+                            fetch(`/api/admin/surveys/${s.id}/versions/${a}/compare/${b}`, { headers: { Authorization: 'Bearer secret' } })
+                              .then(r => r.json())
+                              .then(d => alert(JSON.stringify(d)));
+                          }
+                        });
+                    }}>{t('versions')}</button>
+                    <button className="btn btn-sm btn-secondary me-2" onClick={() => {
+                      fetch(`/api/admin/surveys/${s.id}/responses`, { headers: { Authorization: 'Bearer secret' } })
+                        .then(r => r.json())
+                        .then(list => {
+                          const info = list.map(r => `${r.id}: ${r.submittedAt}`).join('\n');
+                          const rid = prompt(info + '\nID?');
+                          if (rid) {
+                            fetch(`/api/admin/surveys/${s.id}/responses/${rid}/certificate`, { headers: { Authorization: 'Bearer secret' } })
+                              .then(r => r.blob())
+                              .then(b => { const url = URL.createObjectURL(b); const a = document.createElement('a'); a.href = url; a.download = 'certificate.pdf'; a.click(); URL.revokeObjectURL(url); });
+                          }
+                        });
+                    }}>{t('respondents')}</button>
+                    <a href={`?stats=${s.id}`} className="btn btn-sm btn-secondary me-2">{t('viewStats')}</a>
+                    <button className="btn btn-sm btn-warning me-2" onClick={() => {
+                      const closed = !s.closed;
+                      fetch(`/api/admin/surveys/${s.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer secret' },
+                        body: JSON.stringify({ closed })
+                      }).then(() => setSurveys(surveys.map(x => x.id === s.id ? { ...x, closed } : x)));
+                    }}>{s.closed ? t('openSurvey') : t('closeSurvey')}</button>
+                    <button className="btn btn-sm btn-secondary me-2" onClick={() => {
+                      fetch(`/api/admin/surveys/${s.id}/copy`, { method: 'POST', headers: { Authorization: 'Bearer secret' } })
+                        .then(r => r.json())
+                        .then(data => setSurveys([...surveys, { ...s, id: data.id }]));
+                    }}>{t('copySurvey')}</button>
+                    <button className="btn btn-sm btn-secondary me-2" onClick={() => {
+                      fetch(`/api/admin/surveys/${s.id}/template`, { method: 'POST', headers: { Authorization: 'Bearer secret' } })
+                        .then(r => r.json())
+                        .then(d => alert('template id: ' + d.id));
+                    }}>{t('saveTemplate')}</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => {
+                      fetch(`/api/admin/surveys/${s.id}`, { method: 'DELETE', headers: { Authorization: 'Bearer secret' } })
+                        .then(() => setSurveys(surveys.filter(x => x.id !== s.id)));
+                    }}>{t('delete')}</button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <h2 className="h5 mt-3">{t('users')}</h2>
+          <ul className="list-group">
+            {users.map(u => (
+              <li key={u.id} className="list-group-item d-flex justify-content-between align-items-center">
+                {u.email} ({u.role}) {u.blocked ? 'blocked' : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    function Survey({ id, user }) {
+      const [survey, setSurvey] = React.useState(null);
+      const [answers, setAnswers] = React.useState({});
+      const [email, setEmail] = React.useState('');
+      const [code, setCode] = React.useState('');
+      const [cert, setCert] = React.useState('');
+      const token = new URLSearchParams(window.location.search).get('token');
+      React.useEffect(() => {
+        const headers = {};
+        if (user) headers['Authorization'] = 'User ' + user;
+        const url = token ? `/api/surveys/${id}?token=${token}` : `/api/surveys/${id}`;
+        fetch(url, { headers }).then(res => {
+          if (res.status === 403) {
+            return res.json().then(d => setSurvey({ error: d.error }));
+          }
+          return res.json().then(setSurvey);
+        });
+      }, [id, user, token]);
+      React.useEffect(() => {
+        if (user && survey && survey.allowPartial) {
+          fetch(`/api/surveys/${id}/partial`, { headers: { Authorization: 'User ' + user } })
+            .then(r => r.json()).then(data => setAnswers(data.answers || {}));
+        }
+      }, [user, survey]);
+      function submit(e) {
+        e.preventDefault();
+        const payload = { answers, token };
+        if (survey.duplicateCheck === 'email') { payload.email = email; payload.code = code; }
+        const headers = { 'Content-Type': 'application/json' };
+        if (user) headers['Authorization'] = 'User ' + user;
+        fetch(`/api/surveys/${id}/responses`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        })
+          .then(r => r.json())
+          .then(data => {
+            alert(data.message || t('thanks'));
+            if (data.redirect) window.location.href = data.redirect;
+            if (data.certificate) setCert(data.certificate);
+          });
+      }
+      function savePartial(e) {
+        e.preventDefault();
+        if (!user) { alert(t('login')); return; }
+        fetch(`/api/surveys/${id}/partial`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'User ' + user },
+          body: JSON.stringify({ answers })
+        }).then(() => alert(t('saved')));
+      }
+      if (!survey) return <p>{t('loading')}</p>;
+      if (survey.error === 'closed') return <p>{t('surveyClosed')}</p>;
+      return (
+        <div className="survey-container mx-auto">
+          <h1 className="h4 mb-3 text-center">{survey.title?.[lang] || survey.title}</h1>
+          <form onSubmit={submit}>
+            {survey.questions.map((q, idx) => (
+              <div className="mb-3" key={idx}>
+                <label className="form-label">{q.text ? (q.text[lang] || q.text.ko) : q}</label>
+                {q.type === 'choice' ? (
+                  (q.options || []).map((opt, oi) => (
+                    <div className="form-check" key={oi}>
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name={`q${idx}`}
+                        value={opt.value || opt.text?.[lang] || opt}
+                        checked={answers[idx] === (opt.value || opt.text?.[lang] || opt)}
+                        onChange={e => setAnswers({ ...answers, [idx]: e.target.value })}
+                      />
+                      <label className="form-check-label">{opt.text ? (opt.text[lang] || opt.text.ko) : opt}</label>
+                    </div>
+                  ))
+                ) : (
+                  <input className="form-control" value={answers[idx] || ''} onChange={e => setAnswers({ ...answers, [idx]: e.target.value })} />
+                )}
+              </div>
+            ))}
+            {survey.duplicateCheck === 'email' && (
+              <div className="mb-3">
+                <input className="form-control mb-2" placeholder={t('email')} value={email} onChange={e => setEmail(e.target.value)} />
+                <div className="input-group mb-2">
+                  <input className="form-control" placeholder={t('code')} value={code} onChange={e => setCode(e.target.value)} />
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => {
+                    fetch(`/api/surveys/${id}/requestCode`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+                  }}>{t('sendCode')}</button>
+                </div>
+              </div>
+            )}
+            {survey.allowPartial && <button className="btn btn-secondary w-100 mb-2" onClick={savePartial}>{t('tempSave')}</button>}
+            {survey.duplicateCheck === 'user' && !user ? <p>{t('login')}</p> : <button className="btn btn-primary w-100">{t('submit')}</button>}
+          </form>
+          {cert && (
+            <a href={cert} className="btn btn-success w-100 mt-2">{t('downloadCertificate')}</a>
+          )}
+        </div>
+      );
+    }
+
+    function Stats({ id }) {
+      const [stats, setStats] = React.useState(null);
+      React.useEffect(() => {
+        fetch(`/api/surveys/${id}/stats`).then(r => r.json()).then(setStats);
+      }, [id]);
+      if (!stats) return <p>{t('loading')}</p>;
+      return (
+        <div className="survey-container mx-auto">
+          <h1 className="h4 mb-3">{t('viewStats')}</h1>
+          <p>총 응답: {stats.total}</p>
+          <ul className="list-group">
+            {Object.keys(stats.questions).map(q => (
+              <li key={q} className="list-group-item">
+                {q}: {Object.entries(stats.questions[q]).map(([v, c]) => `${v}: ${c}`).join(', ')}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    function SurveyPreview({ data, onClose }) {
+      return (
+        <div className="modal d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-scrollable">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{data.title?.[lang] || data.title}</h5>
+                <button type="button" className="btn-close" onClick={onClose}></button>
+              </div>
+              <div className="modal-body">
+                {data.questions.map((q, idx) => (
+                  <div className="mb-3" key={idx}>
+                    <label className="form-label">{q.text?.[lang] || q.text}</label>
+                    {q.type === 'choice' ? (
+                      (q.options || []).map((o, oi) => (
+                        <div className="form-check" key={oi}>
+                          <input className="form-check-input" type="radio" disabled />
+                          <label className="form-check-label">{o.text?.[lang] || o.text}</label>
+                        </div>
+                      ))
+                    ) : (
+                      <input className="form-control" type="text" disabled />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={onClose}>{t('close')}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Login({ onLogin }) {
+      const [email, setEmail] = React.useState('');
+      const [password, setPassword] = React.useState('');
+      function submit(e) {
+        e.preventDefault();
+        onLogin(email, password);
+      }
+      return (
+        <form onSubmit={submit} className="mb-3">
+          <input className="form-control mb-2" placeholder={t('email')} value={email} onChange={e => setEmail(e.target.value)} />
+          <input type="password" className="form-control mb-2" placeholder={t('password')} value={password} onChange={e => setPassword(e.target.value)} />
+          <button className="btn btn-primary w-100">{t('login')}</button>
+        </form>
+      );
+    }
+
+    function App() {
+      const [user, setUser] = React.useState(localStorage.getItem('userId'));
+      function login(email, password) {
+        fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
+          .then(r => r.json()).then(data => { localStorage.setItem('userId', data.id); setUser(data.id); });
+      }
+      function logout() { localStorage.removeItem('userId'); setUser(null); }
+
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      const statsId = params.get('stats');
+      const admin = params.get('admin');
+      if (admin) return <Admin />;
+      return (
+        <div>
+          {user ? <button className="btn btn-link" onClick={logout}>{t('logout')}</button> : <Login onLogin={login} />}
+          {statsId ? <Stats id={statsId} /> : id ? <Survey id={id} user={user} /> : <Home />}
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
