@@ -1,0 +1,10 @@
+__pycache__/
+survey.db
+credentials.json
+uploads/
+node_modules/
+server/serviceAccount.json
+server/ssl-cert.pem
+server/ssl-key.pem
+server/certificates/
+cookies.txt
