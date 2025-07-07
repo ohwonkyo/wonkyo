@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Create Survey{% endblock %}
+{% block content %}
+<h1>Create Survey</h1>
+<form id="surveyForm" method="post" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label class="form-label">Survey Title</label>
+    <input type="text" name="title" class="form-control" required>
+  </div>
+  <div id="questions"></div>
+  <button type="button" class="btn btn-secondary mb-3" onclick="addQuestion()">Add Question</button>
+  <br>
+  <button type="submit" class="btn btn-primary">Create</button>
+</form>
+
+<script>
+let qCount = 0;
+function addQuestion(){
+  qCount++;
+  const card=document.createElement('div');
+  card.className='card mb-3 p-3';
+  card.innerHTML=`
+  <div class="mb-2">
+    <label class="form-label">Question ${qCount}</label>
+    <input type="text" name="q_text" class="form-control" required>
+  </div>
+  <div class="mb-2">
+    <label class="form-label">Type</label>
+    <select name="q_type" class="form-select" onchange="renderConfig(this)">
+      <option value="text_short">Short Text</option>
+      <option value="text_long">Long Text</option>
+      <option value="choice_single">Single Choice</option>
+      <option value="choice_multi">Multiple Choice</option>
+      <option value="scale">Scale</option>
+      <option value="matrix">Matrix</option>
+      <option value="file">File Upload</option>
+      <option value="datetime">Date/Time</option>
+      <option value="pairwise">Pairwise</option>
+      <option value="gauge">Gauge</option>
+      <option value="conditional">Conditional</option>
+      <option value="text_numeric">Number Only</option>
+      <option value="text_alpha">Text Only</option>
+    </select>
+  </div>
+  <div class="config"></div>
+  <input type="hidden" name="q_config">
+  <button type="button" class="btn btn-sm btn-danger mt-2" onclick="this.parentNode.remove()">Remove</button>
+  `;
+  document.getElementById('questions').appendChild(card);
+}
+
+function renderConfig(sel){
+  const card=sel.closest('.card');
+  const div=card.querySelector('.config');
+  div.innerHTML='';
+  switch(sel.value){
+    case 'choice_single':
+    case 'choice_multi':
+      div.innerHTML='<label class="form-label">Options (one per line)</label><textarea class="form-control options"></textarea>';
+      break;
+    case 'scale':
+    case 'gauge':
+      div.innerHTML='<div class="row"><div class="col"><label>Min</label><input type="number" class="form-control min" value="1"></div><div class="col"><label>Max</label><input type="number" class="form-control max" value="5"></div></div>';
+      break;
+    case 'matrix':
+      div.innerHTML='<label class="form-label">Rows (one per line)</label><textarea class="form-control rows"></textarea><label class="form-label mt-2">Columns (one per line)</label><textarea class="form-control cols"></textarea>';
+      break;
+    case 'pairwise':
+      div.innerHTML='<input type="text" class="form-control optionA" placeholder="Option A"><input type="text" class="form-control optionB mt-2" placeholder="Option B">';
+      break;
+    case 'conditional':
+      div.innerHTML='<input type="number" class="form-control depends" placeholder="Depends on question ID"><input type="text" class="form-control value mt-2" placeholder="Show if value equals">';
+      break;
+  }
+}
+
+function gatherConfig(card){
+  const type=card.querySelector('[name="q_type"]').value;
+  let cfg={};
+  if(type==='choice_single'||type==='choice_multi'){
+    cfg.options=card.querySelector('.options').value.split('\n').filter(s=>s.trim());
+  }else if(type==='scale'||type==='gauge'){
+    cfg.min=parseInt(card.querySelector('.min').value||0);
+    cfg.max=parseInt(card.querySelector('.max').value||0);
+  }else if(type==='matrix'){
+    cfg.rows=card.querySelector('.rows').value.split('\n').filter(s=>s.trim());
+    cfg.cols=card.querySelector('.cols').value.split('\n').filter(s=>s.trim());
+  }else if(type==='pairwise'){
+    cfg.a=card.querySelector('.optionA').value;
+    cfg.b=card.querySelector('.optionB').value;
+  }else if(type==='conditional'){
+    cfg.depends=parseInt(card.querySelector('.depends').value||0);
+    cfg.value=card.querySelector('.value').value;
+  }else if(type==='text_numeric'){
+    cfg.pattern='^\\d+$';
+  }else if(type==='text_alpha'){
+    cfg.pattern='^[A-Za-z]+$';
+  }
+  card.querySelector('[name="q_config"]').value=JSON.stringify(cfg);
+}
+
+document.getElementById('surveyForm').addEventListener('submit',function(){
+  document.querySelectorAll('#questions .card').forEach(gatherConfig);
+});
+</script>
+{% endblock %}

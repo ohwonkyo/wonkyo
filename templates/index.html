@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Survey Home{% endblock %}
+{% block content %}
+<h1>Available Surveys</h1>
+<ul class="list-group">
+  {% for sid, title in surveys %}
+  <li class="list-group-item">
+    {{ title }}
+    <a href="{{ url_for('survey', survey_id=sid) }}" class="btn btn-sm btn-primary ms-2">Take Survey</a>
+    <a href="{{ url_for('results', survey_id=sid) }}" class="btn btn-sm btn-secondary ms-2">Results</a>
+  </li>
+  {% else %}
+  <li class="list-group-item">No surveys yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

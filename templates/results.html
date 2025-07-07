@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Results - {{ survey[0] }}{% endblock %}
+{% block content %}
+<h1>Results: {{ survey[0] }}</h1>
+{% for item in results %}
+  <h5>{{ item.question }}</h5>
+  {% if item.counts %}
+  <ul class="list-group mb-3">
+    {% for text, count in item.counts %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      {{ text }}
+      <span class="badge bg-primary rounded-pill">{{ count }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif item.texts %}
+  <ul class="list-group mb-3">
+    {% for t in item.texts %}
+    <li class="list-group-item">{{ t }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+{% endfor %}
+<a href="{{ url_for('export', survey_id=request.view_args.survey_id) }}" class="btn btn-outline-secondary">Export JSON</a>
+{% endblock %}

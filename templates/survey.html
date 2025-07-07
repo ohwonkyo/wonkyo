@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}{{ survey[0] }}{% endblock %}
+{% block content %}
+<h1>{{ survey[0] }}</h1>
+<form method="post" enctype="multipart/form-data">
+  {% for q in questions %}
+  <div class="mb-3" id="block{{ q.id }}" {% if q.config.depends %}data-dep="{{ q.config.depends }}" data-val="{{ q.config.value }}"{% endif %}>
+    <label class="form-label">{{ q.text }}</label>
+    {% if q.type == 'text_short' %}
+      <input type="text" name="{{ q.id }}" class="form-control" {% if q.config.pattern %}pattern="{{ q.config.pattern }}"{% endif %} required>
+    {% elif q.type == 'text_long' %}
+      <textarea name="{{ q.id }}" class="form-control" rows="3" {% if q.config.pattern %}pattern="{{ q.config.pattern }}"{% endif %}></textarea>
+    {% elif q.type == 'choice_single' %}
+      {% for opt in q.config.options %}
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="{{ q.id }}" id="{{ q.id }}_{{ loop.index }}" value="{{ opt }}" required>
+        <label class="form-check-label" for="{{ q.id }}_{{ loop.index }}">{{ opt }}</label>
+      </div>
+      {% endfor %}
+    {% elif q.type == 'choice_multi' %}
+      {% for opt in q.config.options %}
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="{{ q.id }}" id="{{ q.id }}_{{ loop.index }}" value="{{ opt }}">
+        <label class="form-check-label" for="{{ q.id }}_{{ loop.index }}">{{ opt }}</label>
+      </div>
+      {% endfor %}
+    {% elif q.type == 'scale' %}
+      <select name="{{ q.id }}" class="form-select" required>
+        {% for i in range(q.config.min, q.config.max + 1) %}
+        <option value="{{ i }}">{{ i }}</option>
+        {% endfor %}
+      </select>
+    {% elif q.type == 'matrix' %}
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th></th>
+            {% for col in q.config.cols %}<th class="text-center">{{ col }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in q.config.rows %}
+          <tr>
+            <th>{{ row }}</th>
+            {% for col in q.config.cols %}
+            <td class="text-center"><input type="radio" name="{{ q.id }}_{{ loop.index0 }}" value="{{ col }}" required></td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% elif q.type == 'file' %}
+      <input type="file" name="{{ q.id }}" class="form-control">
+    {% elif q.type == 'datetime' %}
+      <input type="datetime-local" name="{{ q.id }}" class="form-control" required>
+    {% elif q.type == 'pairwise' %}
+      <select name="{{ q.id }}" class="form-select" required>
+        <option value="{{ q.config.a }}">{{ q.config.a }}</option>
+        <option value="{{ q.config.b }}">{{ q.config.b }}</option>
+      </select>
+    {% elif q.type == 'gauge' %}
+      <input type="range" class="form-range" name="{{ q.id }}" min="{{ q.config.min }}" max="{{ q.config.max }}" value="{{ q.config.min }}">
+    {% elif q.type == 'conditional' %}
+      <input type="text" name="{{ q.id }}" class="form-control">
+    {% elif q.type == 'text_numeric' or q.type == 'text_alpha' %}
+      <input type="text" name="{{ q.id }}" class="form-control" pattern="{{ q.config.pattern }}" required>
+    {% else %}
+      <input type="text" name="{{ q.id }}" class="form-control">
+    {% endif %}
+  </div>
+  {% endfor %}
+  <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('[data-dep]').forEach(function(block){
+    function toggle(){
+      const dep=block.getAttribute('data-dep');
+      const val=block.getAttribute('data-val');
+      const deps=document.getElementsByName(dep);
+      let show=false;
+      deps.forEach(function(el){
+        if(el.type==='checkbox' || el.type==='radio'){
+          if(el.checked && el.value===val) show=true;
+        }else if(el.value===val){
+          show=true;
+        }
+      });
+      block.style.display=show?'block':'none';
+    }
+    document.querySelectorAll('[name="'+block.getAttribute('data-dep')+'"]').forEach(el=>el.addEventListener('change',toggle));
+    toggle();
+  });
+});
+</script>
+{% endblock %}
